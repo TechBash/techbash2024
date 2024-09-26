@@ -1,0 +1,40 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"pwsh","items":[{"aliases":[],"languageName":"pwsh","name":"pwsh"}]}}
+
+#!csharp
+
+class TokenResponse
+{
+	public string token_type { get; set; }
+	public string expires_in { get; set; }
+	public string ext_expires_in { get; set; }
+	public string not_before { get; set; }
+	public string resource { get; set; }
+	public string access_token { get; set; }
+}
+
+#!csharp
+
+using System.Net.Http;
+using System.Text.Json;
+
+// tenantId is the Azure Tenant ID
+// clientId, clientSecret, etc come from Azure app registration (Service Principal) [command to create SPN ==> az ad sp create-for-rbac]
+public static async Task<string> GetBearerTokenOauth(string tenantId, string clientId, string clientSecret, string resource = "https://management.azure.com")
+{
+    var client = new HttpClient();
+
+    var response = await client.PostAsync($"https://login.microsoftonline.com/{tenantId}/oauth2/token",
+        new StringContent($"grant_type=client_credentials&client_id={clientId}&client_secret={clientSecret}&resource={resource}",
+            System.Text.Encoding.UTF8, "application/x-www-form-urlencoded"));
+    var content = await response.Content.ReadAsStringAsync();
+    var responseJson = JsonSerializer.Deserialize<TokenResponse>(content);
+
+    return responseJson.access_token;
+}
+
+#!csharp
+
+// tenantId, clientId, clientSecret
+await GetBearerTokenOauth("", "", "")

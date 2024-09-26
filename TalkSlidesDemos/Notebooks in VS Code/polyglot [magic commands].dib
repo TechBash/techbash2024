@@ -1,0 +1,75 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"languageName":"csharp","name":"csharp"}]}}
+
+#!markdown
+
+# Global Magic Commands
+
+#!csharp
+
+#!about
+
+#!csharp
+
+#!lsmagic
+
+#!csharp
+
+#!markdown -h
+
+#!csharp
+
+#!markdown 
+# this is an H1 header
+
+#!csharp
+
+#!import test.cs
+
+#!csharp
+
+SayHello();
+
+#!csharp
+
+#!time
+await Task.Delay(1500);
+
+#!csharp
+
+#!connect -h
+
+#!csharp
+
+#!share
+
+#!csharp
+
+#!set
+
+#!markdown
+
+# C# and F# Magic Commands
+
+#!csharp
+
+#i -h
+
+#!csharp
+
+#r "nuget:Microsoft.DotNet.Interactive.SqlServer,*-*"
+
+#!csharp
+
+// set up some variables
+var s = "this is a string";
+var theAnswer = 42;
+
+#!csharp
+
+#!who
+
+#!csharp
+
+#!whos
