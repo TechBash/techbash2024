@@ -1,0 +1,181 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"pwsh","items":[{"aliases":[],"languageName":"pwsh","name":"pwsh"}]}}
+
+#!pwsh
+
+# NOTE: run this command to authenticate before running any of the cells below
+az login
+
+#!markdown
+
+# Prerequisites
+## Authenticate to the az cli (run the cell above)
+## User should be a CloudApplicationAdministrator in the subscription
+- If you don't the final consent will not be granted
+
+# Create App Registration & Enterprise App
+- Set the `$subscription` property
+  > NOTE: dev/tst/uat/prd
+- Set the `$appName` property
+  > NOTE: just application name (ex 'cuesheet')
+- Set the `$port` property
+  > see table below
+- Set the `$appRoles` property to the roles & descriptions needed for the application
+- Run all the cells below this one
+- If needed copy the values from the output cell to your Azure DevOps pipeline YAML
+
+## Reserved Ports
+Port|Application|Needs App Reg/EA
+:---:|---|:---:
+5001|???
+5002|???
+
+#!pwsh
+
+$subscription = 'prd'
+
+$appName = '???'
+$name = "$appName-app-$subscription"
+$port = 7284
+
+Write-Host "application name = '$name' ($(Get-Date))"
+
+#!pwsh
+
+function AppRoles
+{
+    $appRoles = @{
+        'Read Only'='Users will only be able to view data.'
+        'Administrator'='User will have full access to all entites'
+        'Super User'='User will be able to view, create, update and delete all non administration level entities.'
+    };
+
+    #$appRoles = @{
+    #    'SuperUser'='SuperUser'
+    #    'ReadOnly'='ReadOnly'
+    #};
+
+    #$appRoles = @{
+    #    'VendorClient'='VendorClient'
+    #    'ReadOnly'='ReadOnly'
+    #    'Coordinator'='Coordinator'
+    #    'SuperUser'='SuperUser'
+    #};
+
+    if ($appRoles.Count -gt 0)
+    {
+        $result = @()
+        foreach ($role in $appRoles.GetEnumerator())
+        {
+            $result += "{""allowedMemberTypes"": [""User""],""description"": ""$($role.Value)"",""displayName"": ""$($role.Name)"",""isEnabled"": ""true"",""origin"": ""Application"",""value"": ""$($role.Name.replace(' ', '').ToLower())""}"
+        }
+
+        return "[ $($result -join ',') ]"
+    }
+    else
+    {
+        return ""
+    }
+}
+
+Write-Host "done ($(Get-Date))"
+
+#!pwsh
+
+$web_redirect_uris = "https://$name.azurewebsites.net/.auth/login/aad/callback"
+$roles = AppRoles
+
+# Create the App Registration
+if ($roles.Length -eq 0)
+{
+    $appregObjectId = az ad app create --display-name $name --sign-in-audience AzureADMyOrg --enable-id-token-issuance true `
+      --web-redirect-uris $web_redirect_uris --query id -o tsv
+}
+else
+{
+    $appregObjectId = az ad app create --display-name $name --sign-in-audience AzureADMyOrg --enable-id-token-issuance true `
+      --app-roles ($roles -replace '"', '\"') --web-redirect-uris $web_redirect_uris --query id -o tsv
+}
+
+# Create an AAD service principal for the App Registration (essentially creates the Enterprise Application)
+$spId = az ad sp create --id $appregObjectId --query id -o tsv
+Write-Host "spId = $spId ($(Get-Date))"
+
+#!pwsh
+
+# add the SPA redirect uris
+$body = @{ spa = @{ redirectUris = ("https://$name.azurewebsites.net/authentication/login-callback","https://localhost:$port/authentication/login-callback")}} | ConvertTo-Json -Compress
+$graphurl = "https://graph.microsoft.com/v1.0/applications/$appregObjectId"
+
+az rest --method PATCH --uri $graphurl --headers 'Content-Type=application/json' --body ($body -replace '"', '\"')
+
+Write-Host "done ($(Get-Date))"
+
+#!pwsh
+
+# add the Web logoutUrl
+$body = @{ web = @{ logoutUrl = ("https://$name.azurewebsites.net/authentication/signout-callback-oidc/")}} | ConvertTo-Json -Compress
+$graphurl = "https://graph.microsoft.com/v1.0/applications/$appregObjectId"
+
+az rest --method PATCH --uri $graphurl --headers 'Content-Type=application/json' --body ($body -replace '"', '\"')
+
+Write-Host "done ($(Get-Date))"
+
+#!pwsh
+
+# set miscellaneous Enterprise Application properties
+## set Assignment required = true
+az ad sp update --id $spId --set appRoleAssignmentRequired=true
+
+## set tags
+##    HideApp means 'Visible to users = false'
+##    WindowsAzureActiveDirectoryIntegratedApp causes the app to show up in the list of Enterprise Applications
+az ad sp update --id $spId --set tags='[ \"HideApp\",\""WindowsAzureActiveDirectoryIntegratedApp"\" ]'
+
+Write-Host "done ($(Get-Date))"
+
+#!pwsh
+
+# set App Reg API Permissions
+#$appregObjectId
+
+# User.Read
+az ad app permission add --id $appregObjectId --api 00000003-0000-0000-c000-000000000000 --api-permissions e1fe6dd8-ba31-4d61-89e7-88639da4683d=Scope
+az ad app permission grant --id $appregObjectId --api 00000003-0000-0000-c000-000000000000 --scope User.Read
+
+# User.ReadBasic.All
+az ad app permission add --id $appregObjectId --api 00000003-0000-0000-c000-000000000000 --api-permissions b340eb25-3456-403f-be2f-af7a0d370277=Scope
+az ad app permission grant --id $appregObjectId --api 00000003-0000-0000-c000-000000000000 --scope User.ReadBasicAll
+
+# requires running user to PIM up to DSG_CloudApplicationAdministrator_PIM
+az ad app permission admin-consent --id $appregObjectId
+
+# NOTE: the output from this cell will probably show some errors; it looks like it's safe to ignore them but double check the
+#       API Permissions of the App Registration to make sure they were set correctly
+
+Write-Host "done ($(Get-Date))"
+
+#!pwsh
+
+# remove 'Default Access' user from 'Users and groups' of the Enterprise Application
+
+#az role assignment list --scope /subscriptions/5a81292e-8a6e-415b-9b3d-aeeba948be60/resourceGroups/keyvault-rg-dev/providers/Microsoft.KeyVault/vaults/rsn-keyvault-dev `
+#  --include-inherited --include-groups `
+#  --query "[].{principalName:principalName, roleDefinitionName:roleDefinitionName, scope:scope}" `
+#  -o table
+
+#!markdown
+
+# Output below:
+
+#!pwsh
+
+$appId = az ad app show --id $appregObjectId --query appId -o tsv
+
+Write-Output "***** $appName *****"
+Write-Output 'Add the following values to the deployment stage of your pipeline YAML:'
+Write-Output 'AzureAd.Authority: https://login.microsoftonline.com/b827da74-8087-4361-97e9-78c05736a2df'
+Write-Output "AzureAd.ClientId: $appId"
+
+Write-Output "`ncreated $name"

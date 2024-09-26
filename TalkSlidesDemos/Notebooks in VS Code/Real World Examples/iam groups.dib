@@ -1,0 +1,78 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"pwsh","items":[{"aliases":[],"languageName":"pwsh","name":"pwsh"}]}}
+
+#!markdown
+
+# NOTE: the Enterprise Application(s) and App Registration(s) should be created ___first___
+
+#!pwsh
+
+az login
+
+#!pwsh
+
+$environments = @( 'prd' )
+#$environments = @( 'tst', 'uat', 'prd' )
+
+$applications = @(
+    '???'
+)
+
+#$whatif = $true
+$whatif = $false
+if ($whatif) { Write-Host '***** running in WHATIF mode *****' }
+
+foreach ($application in $applications)
+{
+    foreach ($environment in $environments)
+    {
+        $name = "$application-app-$environment"
+        if ($whatif) { Write-Host "application name = $name" }
+
+        $enterpriseApplicationName = $name.ToLower()
+        $id = az ad sp list --all --query "[?displayName == '$enterpriseApplicationName' && servicePrincipalType == 'Application'].id" -o tsv
+        if ($whatif) { Write-Host "application id = $id" }
+        $roles = az ad sp show --id $id --query appRoles[].[displayName,description] -o tsv
+        if ($whatif) { Write-Host "roles: $roles" }
+
+        if ($roles.Count -eq 0)
+        {
+            $groupName = "IAM-$application-$environment"  # ex: IAM-<app name>-tst
+
+            if ($whatif)
+            {
+                Write-Host "`nWHATIF: will create group $groupName :"
+                Write-Host "     az ad group create --display-name $groupName --mail-nickname $groupName --force false"
+            }
+            else
+            {
+                $null = az ad group create --display-name $groupName --mail-nickname $groupName --force false
+                Write-Host "created group $groupName"
+            }
+        }
+        else
+        {
+            foreach ($role in $roles)
+            {
+                $bits = $role.Split("`t")
+                $rolename = $bits[0].Replace(' ', '')
+                $groupName = "IAM-$application-$environment-$rolename"  # ex: IAM-<app name>-tst-SuperUser
+
+                if ($whatif)
+                {
+                    Write-Host "`nWHATIF: will create group $groupName ($($bits[1])):"
+                    Write-Host "     az ad group create --display-name $groupName --mail-nickname $groupName --description $($bits[1]) --force false"
+                }
+                else
+                {
+                    az ad group create --display-name $groupName --mail-nickname $groupName --description $($bits[1]) --force false
+                    Write-Host "created group $groupName ($($bits[1]))"
+                }
+        
+                # is it possible assign group to Enterprise App & role???
+            }
+        }
+    }
+}
+Write-Host "done ($(Get-Date))"

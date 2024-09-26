@@ -1,0 +1,149 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"languageName":"csharp","name":"csharp"},{"aliases":[],"languageName":"T-SQL","name":"sql-mydatabase"},{"aliases":[],"languageName":"T-SQL","name":"sql-mydatabase2"},{"aliases":[],"languageName":"T-SQL","name":"sql-mydatabase3"}]}}
+
+#!markdown
+
+## [Variable Sharing](https://github.com/dotnet/interactive/blob/main/docs/variable-sharing.md)
+
+#!markdown
+
+#### Sharing By Reference
+
+#!fsharp
+
+open System.Collections.Generic
+
+let list = List<string>()
+list.Add "added by F#"
+list
+
+#!csharp
+
+#!set --byref --value @fsharp:list --name list
+list.Add("added by C#");
+list
+
+#!fsharp
+
+list
+
+#!markdown
+
+#### A _(slightly more)_ Practical Example of Sharing
+
+#!pwsh
+
+# authenticates to Azure CLI; not needed if you are already authenticated
+az login
+
+#!markdown
+
+##### Read some sensitive data from the local file system
+- first reference the NuGet packages
+- use C# code to read the local config file & grab the sensitive information
+
+#!csharp
+
+#r "nuget: Microsoft.Extensions.Configuration"
+#r "nuget: Microsoft.Extensions.Configuration.Json"
+
+#!csharp
+
+/*
+- potentially sensitive information should be stored in a separate file locally
+- the file should be a json file with the format
+  {
+    "key 1": "value 1",
+    "key 2": "value 2",
+    "key 3": "value 3"
+    ...
+  }
+*/
+
+using Microsoft.Extensions.Configuration;
+var settingsFilePath = @"D:\Repos\talks\VSCodeNotebooks\local.settings.json";
+var configuration = new ConfigurationBuilder()
+  .AddJsonFile(settingsFilePath)
+  .Build();
+
+//var <variable name> = configuration["<key name>"];
+var subscriptionId = configuration["azureSubscriptionId"];
+
+#!markdown
+
+##### Use PowerShell to get a secret from the Azure KeyVault
+- Share the sensitive information (Azure subscription id) from C# to PowerShell & set up some additional variables
+- Use the Azure CLI to get the name of the KeyVault
+- Use the Azure CLI to get a secret from the KeyVault
+
+#!pwsh
+
+#!set --value @csharp:subscriptionId --name subscriptionId
+
+$resourceGroup = 'demo'
+$secretName = 'hello'
+
+#!pwsh
+
+#az keyvault list -h
+$keyvault = az keyvault list --subscription $subscriptionId --resource-group $resourceGroup --query [].name -o tsv
+$keyvault
+
+#!pwsh
+
+#az keyvault secret list -h
+az keyvault secret list --subscription $subscriptionId --vault-name $keyvault --query [].[name,id] -o table
+
+#!pwsh
+
+# call az cli to get the secret from Azure KeyVault
+#az keyvault secret show -h
+az keyvault secret show --subscription $subscriptionId --vault-name $keyvault --name $secretName --query value -o tsv
+
+#!markdown
+
+#### Sharing raw _Value_ data
+- data defined in the same notebook
+- data loaded from from file
+- data fetched from URL
+
+#!value
+
+#!value --name jsonData
+
+{
+    "where": "where are we gonna go?",
+    "what": "Planet 10",
+    "when": "real soon"
+}
+
+#!csharp
+
+#!share jsonData --from value
+
+using System.Text.Json;
+var doc = JsonDocument.Parse(jsonData);
+doc.Display("application/json");
+
+#!value
+
+#!value --from-file titanic_dataset.csv --name titanic
+
+#!csharp
+
+#!share titanic --from value
+titanic
+
+#!value
+
+#!value --from-url https://dot.net --name dn
+
+#!csharp
+
+#!share dn --from value
+display(dn, "text/html");
+
+#!value
+
+#!value --from-url https://dot.net --name dn --mime-type text/html

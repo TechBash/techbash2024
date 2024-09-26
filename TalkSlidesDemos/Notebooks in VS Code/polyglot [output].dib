@@ -1,0 +1,240 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"languageName":"csharp","name":"csharp"}]}}
+
+#!csharp
+
+// display() returns an object that can be updated
+var fruitOutput = display("Let's get some fruit");
+var basket = new []
+{
+    "apple", "orange", "coconut", "pear", "peach"
+};
+
+foreach (var fruit in basket)
+{
+    System.Threading.Thread.Sleep(1000);
+    fruitOutput.Update($"I have 1 {fruit}");
+}
+
+System.Threading.Thread.Sleep(500);
+fruitOutput.Update(basket);
+
+#!csharp
+
+// Console() output is captured
+Console.WriteLine("standard output");
+Console.Error.WriteLine("standard error");
+
+#!csharp
+
+var files = new System.IO.DirectoryInfo(".").GetFileSystemInfos();
+Microsoft.DotNet.Interactive.Formatting.Formatter.ListExpansionLimit = 5;
+files
+
+#!csharp
+
+using Microsoft.DotNet.Interactive.Formatting;
+Formatter<int>.ListExpansionLimit = 3;
+Enumerable.Range(1, 10)
+
+#!markdown
+
+<center><image src="dumpify.png"/></center>
+
+#### Adds .Dump() extension method (similar to [LinqPad](https://www.linqpad.net/))
+
+#!csharp
+
+// https://www.nuget.org/packages/Dumpify
+#r "nuget: Dumpify, 0.6.6"
+
+#!markdown
+
+#### Basic Demo
+
+#!csharp
+
+class Person
+{
+    public string FirstName { get; set; }
+    public string LastName { get; set; }
+    public Person Spouse { get; set; }
+    public Profession Profession { get; set; }
+}
+
+enum Profession
+{
+    Software,
+    Health
+}
+
+#!csharp
+
+using Dumpify;
+
+var moaid = new Person { FirstName = "Moaid", LastName = "Hathot", Profession = Profession.Software };
+var haneeni = new Person { FirstName = "Haneeni", LastName = "Shibli", Profession = Profession.Health };
+
+moaid.Spouse = haneeni;
+haneeni.Spouse = moaid;
+
+moaid.Dump();
+//moaid.Display();
+moaid
+
+#!csharp
+
+moaid.Display()  // default MIME type is text/html
+
+#!csharp
+
+moaid.Display("text/plain");
+
+#!csharp
+
+Formatter.RecursionLimit = 0;
+moaid.Display("application/json");
+
+#!csharp
+
+moaid.Display("application/xml");
+
+#!csharp
+
+using System.Drawing;
+using Microsoft.DotNet.Interactive.Formatting;
+
+Formatter.SetPreferredMimeTypesFor(
+    typeof(Rectangle),
+    "text/plain",
+    "text/html",
+    "application/json"
+);
+
+new Rectangle{ Height = 50, Width = 100 }
+
+#!csharp
+
+using System.Drawing;
+using Microsoft.DotNet.Interactive.Formatting;
+
+Formatter.Register<Rectangle>(
+    rect => $"""
+         <svg width="100" height="100">
+           <rect width="{rect.Width}" 
+                 height="{rect.Height}" 
+                 style="fill:rgb(0,255,200)" />
+         </svg>
+         """, 
+    mimeType: "text/html");
+
+#!csharp
+
+new System.Drawing.Rectangle{ Height = 50, Width = 100 }
+
+#!csharp
+
+Microsoft.DotNet.Interactive.Formatting.Formatter.ResetToDefault();
+
+#!markdown
+
+#### REST API demo
+
+#!csharp
+
+#r "nuget: Microsoft.Extensions.Configuration"
+#r "nuget: Microsoft.Extensions.Configuration.Json"
+
+#!csharp
+
+using Microsoft.Extensions.Configuration;
+
+var settingsFilePath = @"D:\Repos\talks\VSCodeNotebooks\local.settings.json";
+var configuration = new ConfigurationBuilder()
+  .AddJsonFile(settingsFilePath)
+  .Build();
+
+var key = configuration["sportradarmlb"];
+var scheduleDate = "2023/04/14";
+scheduleDate.Display();
+//var gamesUrl = $"{configuration["gamesUrl"]}{key}";
+var seasonsUrl = $"{configuration["seasonsUrl"]}{key}";
+
+#!csharp
+
+// classes for JSON deserialization
+
+using System.Text.Json.Serialization;
+public class League
+{
+    [JsonPropertyName("id")]
+    public string id { get; set; }
+
+    [JsonPropertyName("name")]
+    public string name { get; set; }
+
+    [JsonPropertyName("alias")]
+    public string alias { get; set; }
+}
+
+public class Seasons
+{
+    [JsonPropertyName("league")]
+    public League league { get; set; }
+
+    [JsonPropertyName("seasons")]
+    public List<Season> seasons { get; set; }
+}
+
+public class Season
+{
+    [JsonPropertyName("id")]
+    public string id { get; set; }
+
+    [JsonPropertyName("year")]
+    public int year { get; set; }
+
+    [JsonPropertyName("type")]
+    public Type type { get; set; }
+
+    [JsonPropertyName("status")]
+    public string status { get; set; }
+
+    [JsonPropertyName("start_date")]
+    public string start_date { get; set; }
+
+    [JsonPropertyName("end_date")]
+    public string end_date { get; set; }
+}
+
+public class Type
+{
+    [JsonPropertyName("code")]
+    public string code { get; set; }
+
+    [JsonPropertyName("name")]
+    public string name { get; set; }
+}
+
+#!csharp
+
+using System.Linq;
+using Dumpify;
+
+// to get a daily schedule
+var client = new System.Net.Http.HttpClient();
+var response = await client.GetAsync(seasonsUrl);
+//response.Display();
+var content = await response.Content.ReadAsStringAsync();
+//content.Display("application/json");
+var seasons = System.Text.Json.JsonSerializer.Deserialize<Seasons>(content);
+//seasons.Display();
+//seasons.Dump();
+
+var data = seasons.seasons.Where(x => x.year > 2020).ToList();
+data.Display();
+data.Dump();
+
+//seasons.seasons.Where(x => x.status != null && x.status != "closed").OrderBy(x => x.start_date).Display();
+seasons.seasons.Where(x => x.status != null && x.status != "closed").OrderBy(x => x.start_date).ToList().Dump();

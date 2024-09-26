@@ -1,0 +1,184 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"languageName":"csharp","name":"csharp"},{"aliases":[],"languageName":"KQL","name":"kql-mydatabase"},{"aliases":[],"languageName":"T-SQL","name":"sql-mydatabase"},{"aliases":[],"languageName":"T-SQL","name":"sql-sqlexpress"}]}}
+
+#!markdown
+
+# C#
+
+#!csharp
+
+class Person
+{
+    public string Firstname { get; set; }
+    public string Middlename { get; set; }
+    public string Lastname { get; set; }
+}
+
+var p = new Person { Firstname = "James", Middlename = "Tiberius", Lastname = "Kirk" };
+$"{p.Firstname} {p.Middlename} {p.Lastname}".Display();
+
+// using trailing expression
+p
+
+#!markdown
+
+# F#
+
+#!fsharp
+
+let square x = x * x
+
+printfn "%d squared is: %d" 12 (square 12)
+
+#!markdown
+
+# Multiple kernels in a single cell: C# _and_ F#
+> note that the cell is declared as a PowerShell cell
+
+#!pwsh
+
+Write-Host "hello from powershell"
+
+#!csharp
+
+Console.WriteLine("Hello from C#!");
+
+#!fsharp
+
+"Hello from F#!" |> Console.WriteLine
+
+#!http
+
+// http://stapi.co/api/
+// http://stapi.co/api-documentation
+
+
+//http://stapi.co/api/v1/rest/season/search
+
+//http://stapi.co/api/v1/rest/performer/search
+
+//http://stapi.co/api/v1/rest/performer/search?tosPerformer=true
+
+http://stapi.co/api/v1/rest/performer/search?name=William%20Shatner
+
+#!markdown
+
+# HTML
+
+#!html
+
+<h1>this is a test</h1>
+
+#!markdown
+
+# Javascript
+### ___truthy/falsy___ is weird...
+
+#!javascript
+
+if (true) { console.log("true is truthy") }
+if ({}) { console.log("{} is truthy") }
+if ([]) { console.log("[] is truthy") }
+if (42) { console.log("42 is truthy") }
+if ("0") { console.log("\"0\" is truthy") }
+if ("false") { console.log("\"false\" is truthy") }
+if (new Date()) { console.log("new date() is truthy") }
+if (-42) { console.log("-42 is truthy") }
+if (12n) { console.log("12n is truthy") }
+if (3.14) { console.log("3.14 is truthy") }
+if (-3.14) { console.log("-3.14 is truthy") }
+if (Infinity) { console.log("Infinity is truthy") }
+if (-Infinity) { console.log("-Infinity is truthy") }
+
+if (false) { console.log("huh? what?") } else console.log("false is falsy")
+if (null) { console.log("huh? what?") } else console.log("null is falsy")
+if (undefined) { console.log("huh? what?") } else console.log("undefined is falsy")
+if (0) { console.log("huh? what?") } else console.log("0 is falsy")
+if (-0) { console.log("huh? what?") } else console.log("-0 is falsy")
+if (0n) { console.log("huh? what?") } else console.log("0n is falsy")
+if (NaN) { console.log("huh? what?") } else console.log("NaN is falsy")
+if ("") { console.log("huh? what?") } else console.log("\"\" is falsy")
+
+#!markdown
+
+# [Mermaid](https://mermaid.js.org/) Diagrams
+
+#!mermaid
+
+sequenceDiagram
+    Alice->>John: Hello John, how are you?
+    John-->>Alice: Great!
+    Alice-)John: See you later!
+
+#!markdown
+
+# PowerShell
+
+#!pwsh
+
+$PSVersionTable.PSVersion
+
+#!markdown
+
+# SQL
+
+#!csharp
+
+#r "nuget:Microsoft.DotNet.Interactive.SqlServer,*-*"
+
+#!csharp
+
+// the '#!connect mssql' magic command comes from the Microsoft.DotNet,Interactive.SqlServer package (the cell above)
+
+// this command is not idempotent; running it more that once will result in an error (the kernel name must be unique)
+
+#!connect mssql --kernel-name sqlexpress "Persist Security Info=False; Integrated Security=true; TrustServerCertificate=True; Initial Catalog=AdventureWorks2022; Server=.\SQLEXPRESS"
+
+#!sql-sqlexpress
+
+--select @@version
+
+--select top 100 * from Sales.SalesOrderDetail
+
+SELECT TOP (5) H.*, D.*
+FROM
+  [AdventureWorks2022].[Sales].[SalesOrderHeader] H,
+  [AdventureWorks2022].[Sales].[SalesOrderDetail] D
+WHERE
+  H.SalesOrderID = D.SalesOrderID
+
+#!markdown
+
+# KQL
+
+#!csharp
+
+#r "nuget: Microsoft.Extensions.Configuration"
+#r "nuget: Microsoft.Extensions.Configuration.Json"
+
+// get kusto cluster from config file
+using Microsoft.Extensions.Configuration;
+
+var settingsFilePath = @"D:\Repos\talks\VSCodeNotebooks\local.settings.json";
+var configuration = new ConfigurationBuilder()
+  .AddJsonFile(settingsFilePath)
+  .Build();
+
+var cluster = configuration["kustoCluster"];
+
+#!csharp
+
+#r "nuget:Microsoft.DotNet.Interactive.Kql,*-*"
+
+#!csharp
+
+// I uploaded the titanic_dataset.csv in Azure Data Explorer to create a cluster
+#!connect kql --kernel-name mydatabase --cluster @csharp:cluster --database "MyDatabase"
+
+#!kql-mydatabase
+
+// this cell is using the kql-mydatabase kernel created by the cell above
+['Titanic'] 
+| where (Age >= 5 and Age <= 10) and Survived
+| order by Fare desc
