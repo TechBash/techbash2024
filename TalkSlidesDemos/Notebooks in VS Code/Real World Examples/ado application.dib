@@ -1,0 +1,163 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"languageName":"csharp","name":"csharp"}]}}
+
+#!markdown
+
+## Register an Azure Devops Application & use it to authenticate REST API requests
+1. Figure out what [Scopes](https://learn.microsoft.com/en-us/azure/devops/integrate/get-started/authentication/oauth?view=azure-devops#scopes) will be needed for your application
+2. Register [ADO Application](https://app.vsaex.visualstudio.com/app/register) with the appropriate scopes
+    * [List of ADO Applications](https://app.vsaex.visualstudio.com/)
+3. [Authorize](#authorize-the-ado-application) the ADO Application
+
+#!markdown
+
+### Authorize the ADO Application:
+Run the code in the next cell
+
+#!csharp
+
+// callback for ADO application setup
+// sample function code below
+var callbackUrl = "<your callback url goes here>";
+
+var appId = "<appId copied from app registration>"; // appId from ADO app registration
+// to access application registration go to https://app.vsaex.visualstudio.com/app/view?clientId=<appId>
+
+// scopes are space separated; scopes are available in the app registration
+var scopes = "<scopes copied from app registration>";
+
+AuthorizeAzDOApp(appId, "testing", scopes, callbackUrl);
+
+// will have to copy & paste this in a browser one time to grant authorization to the app
+static void AuthorizeAzDOApp(string clientId, string state, string scopes, string callbackUrl)
+{
+  //Console.WriteLine($@"https://app.vssps.visualstudio.com/oauth2/authorize?client_id={clientId}&response_type=Assertion&state={state}&scope={scopes}&redirect_uri={callbackUrl}");
+  var proc = new System.Diagnostics.Process();
+  proc.StartInfo.UseShellExecute = true;
+  proc.StartInfo.FileName = $@"https://app.vssps.visualstudio.com/oauth2/authorize?client_id={clientId}&response_type=Assertion&state={state}&scope={scopes}&redirect_uri={callbackUrl}";
+  proc.Start ();
+}
+	
+// copy the code from the response url (in the browser) & use it in the cell below (in the authCode variable)
+
+#!csharp
+
+using System.Net.Http;
+using System.Text;
+using System.Web;
+
+// this is the client secret of an Azure DevOps application
+var clientSecret = "";
+
+// authCode is copied from the url response to the authorization request in the above cell (only the 'code=' parameter; omit the '&state=testing')
+// ==> response: <your callback url>?code=eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsIng1dCI6Im9PdmN6NU1fN3AtSGpJS2xGWHo5M3VfVjBabyJ9.eyJhdWkiOiI1YWQ3ZDNjMi1jZGY5LTQzMmItOWRlYS1hYWExMTNkYzY4MTkiLCJuYW1laWQiOiJiOWMzODgzNC1iNzkyLTQ0NWMtOTNiNS0wNDIzNmM5NDYzOGMiLCJzY3AiOiJ2c28uYnVpbGQgdnNvLmNvZGVfZnVsbCB2c28ucmVsZWFzZSB2c28ud2lraV93cml0ZSB2c28ud29yayB2c28uYXV0aG9yaXphdGlvbl9ncmFudCIsImlzcyI6ImFwcC52c3Rva2VuLnZpc3VhbHN0dWRpby5jb20iLCJhdWQiOiJhcHAudnN0b2tlbi52aXN1YWxzdHVkaW8uY29tIiwibmJmIjoxNjUxNjg1NDUxLCJleHAiOjE2NTE2ODYzNTF9.ceQtB5BRaPQSliZIkoRhink37jHBjO8Bts9tQCzrLWMbtV1RJalhPCIxzBF-K6h4OYZh-PMGhNaizoR1jBJRj9_iUVsm16ZvSKNx0YTIYTbLfJOuED9yEiMc1aYUK5mBxpX2wuD68tH38aEToqBVMXZqpadWuw1MHNWG_D1qP-bvhGl0RuE94lR1te8_FKfk3nFnAOlkrnfrPgHxzcarLgZuR8EHOUf2BpD3pFiduDavHtXrZhgl278MvPzl-oWOn0jwcAR5scPReMMlGlH1u4rpOKplrA9Sryk757gE32-IODen5d31cCQXJZQWIYo0gAAqwErxoyzd-sAK16sRrw&state=testing
+var authCode = "";
+
+var tokenUrl = "https://app.vssps.visualstudio.com/oauth2/token";
+var authorizeBody = $"client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer&client_assertion={HttpUtility.UrlEncode(clientSecret)}&grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion={HttpUtility.UrlEncode(authCode)}&redirect_uri={callbackUrl}";
+
+var client = new HttpClient();
+var response = await client.PostAsync(tokenUrl, new StringContent(authorizeBody, Encoding.UTF8, "application/x-www-form-urlencoded"));
+//Console.WriteLine($"OAuth response:\n{response}");
+var content = await response.Content.ReadAsStringAsync();
+//Console.WriteLine($"OAuth content:\n{content}");
+var tokenResponse = System.Text.Json.JsonSerializer.Deserialize<TokenResponse>(content);
+//Console.WriteLine($"OAuth token response:\n{tokenResponse}");
+
+Console.WriteLine($"OAuth refresh token: {tokenResponse.refresh_token}");
+Console.WriteLine($"OAuth access token: {tokenResponse.access_token}");
+
+// sample code to use the OAuth token below
+
+class TokenResponse
+{
+	public string token_type { get; set; }
+	public string expires_in { get; set; }
+	public string scope { get; set; }
+	public string access_token { get; set; }
+	public string refresh_token { get; set; }
+}
+
+#!markdown
+
+#### Code example: callback function
+```csharp
+using System.Net;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Primitives;
+
+public static async Task<IActionResult> Run(HttpRequest req, ILogger log)
+{
+    log.LogInformation($"query string = {req.QueryString.ToString()}");
+    string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
+    log.LogInformation($"body = {requestBody}");
+    return new OkObjectResult(requestBody);
+}
+
+```
+
+#!markdown
+
+#### Code example: use the refresh token from the TokenResponse in your code
+
+```csharp
+// cache tokens to cut down on refresh token requests
+// the key is the URL to the resource the token will authenticate requests for and the value is the most recent token
+readonly Dictionary<string, TokenResponse> tokens = new();
+
+// refresh the bearer token for Azure Devops (https://vsrm.dev.azure.com)
+public async Task RefreshAzureDevopsBearerTokenOauth()
+{
+    var callbackUrl = "<your callback url>";
+    var refreshBody = $"client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer&client_assertion={HttpUtility.UrlEncode(_devopsClientSecret)}&grant_type=refresh_token&assertion={HttpUtility.UrlEncode(_devopsRefreshToken)}&redirect_uri={callbackUrl}";
+    await GetBearerToken("https://vsrm.dev.azure.com", "https://app.vssps.visualstudio.com/oauth2/token",
+        refreshBody, new List<string> { "https://dev.azure.com" });
+}
+
+// get a token for a resource from OAuth endpoint and cache it for later use
+async Task GetBearerToken(string resource, string url, string body, List<string> aliases)
+{
+    if (!tokens.ContainsKey(resource) || DateTime.Now > tokens[resource].Expires)
+    {
+        var response = await new HttpClient().PostAsync(url, new StringContent(body, Encoding.UTF8, "application/x-www-form-urlencoded"));
+        var content = await response.Content.ReadAsStringAsync();
+        if (response.IsSuccessStatusCode)
+        {
+            var bearerToken = JsonSerializer.Deserialize<TokenResponse>(content);
+            bearerToken.Expires = DateTime.Now.AddSeconds(int.Parse(bearerToken.expires_in) - 5000);
+
+            AddToken(resource, bearerToken);
+            foreach (var alias in aliases) AddToken(alias, bearerToken);
+        }
+        else
+        {
+            throw new Exception($"GetBearerToken(): failed to get bearer token for resource '{resource}'\n{response.StatusCode}={response.ReasonPhrase}\n{content}");
+        }
+    }
+}
+
+// add (or update) a token in the internal cache
+void AddToken(string key, TokenResponse value)
+{
+    if (tokens.ContainsKey(key))
+        tokens[key] = value;
+    else
+        tokens.Add(key, value);
+}
+
+// get an authenticated HttpClient inferring the token needed from the url passed
+HttpClient AuthenticatedClient(string url)
+{
+    var result = new HttpClient();
+    foreach (var token in tokens)
+    {
+        if (url.StartsWith(token.Key))
+        {
+            result.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token.Value.access_token);
+            break;
+        }
+    }
+    return result;
+}
+```
