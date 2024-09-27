@@ -1,0 +1,24 @@
+az login
+
+az extension list-available --output table
+
+# resource groups
+az group list --query [].name -o tsv
+az group list --query "[? contains(name,'demo')].name" -o tsv
+
+# keyvault
+az keyvault secret -h
+az keyvault secret list --vault-name mfb-demo-keyvault --query [].name -o tsv
+az keyvault secret show --vault-name mfb-demo-keyvault `
+  --name hello --query value -o tsv
+
+# enterprise applications
+az ad app list -h
+az ad app list --query [].[displayName,id] -o tsv
+az ad app list --query [].[displayName,id] -o table
+az ad app list --display-name "demo" `
+  --query [].appRoles[].[displayName,description] -o table
+
+# service principals
+az ad sp -h
+az ad sp list --query [].displayName

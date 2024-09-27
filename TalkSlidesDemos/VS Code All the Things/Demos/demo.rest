@@ -1,0 +1,21 @@
+# http://stapi.co/api/
+# http://stapi.co/api-documentation
+
+
+# @name abc
+http://stapi.co/api/v1/rest/season/search
+
+###
+
+http://stapi.co/api/v1/rest/performer/search
+
+###
+
+http://stapi.co/api/v1/rest/performer/search?tosPerformer=true
+
+###
+http://stapi.co/api/v1/rest/performer/search?name=William%20Shatner
+
+###
+@actor = William Shatner
+http://stapi.co/api/v1/rest/performer/search?name={{actor}}
