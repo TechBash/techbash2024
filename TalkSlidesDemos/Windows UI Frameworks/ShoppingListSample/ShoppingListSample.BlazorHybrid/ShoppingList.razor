@@ -1,0 +1,75 @@
+﻿@using ShoppingListSample.Shared
+<h1>Shopping List</h1>
+
+@if (items == null || items.Count == 0)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <h3>Add item</h3>
+    <div class="form-group" style="padding: 10px">
+        <label for="name">Name</label>
+        <input type="text" class="form-control" id="name" @bind="newItem.Name" />
+        <label for="category">Category</label>
+        <select class="form-control" id="category" @bind="newItem.Category.Name">
+            <option value="">Select category</option>
+            @foreach (var category in categories)
+            {
+                <option value="@category.Name">@category.Name</option>
+            }
+        </select>
+        <button class="btn btn-primary" @onclick="AddItem">Add item</button>
+    </div>
+    <h3>Items to buy</h3>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Category</th>
+                <th>Purchased</th>
+                <th></th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in items)
+            {
+                <tr>
+                    <td>@item.Name</td>
+                    <td>@item.Category</td>
+                    <td><input type="checkbox" checked="@item.IsComplete" disabled="disabled" /></td>
+                    <td><button class="btn btn-primary" @onclick="() => item.IsComplete = !item.IsComplete">Toggle purchased</button></td>
+                    <td><button class="btn btn-danger" @onclick="() => items.Remove(item)">Delete item</button></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    internal IList<Item> items;
+    internal IList<Category> categories;
+    internal Item newItem;
+
+    public ShoppingList()
+    {
+        newItem = new Item();
+        newItem.Category = new Category();
+        categories = ShoppingListHelpers.CreateCategories();
+        items = new List<Item>(ShoppingListHelpers.CreateDemoShoppingListItems());
+    }
+
+    private void AddItem()
+    {
+        if (string.IsNullOrWhiteSpace(newItem.Name) || string.IsNullOrWhiteSpace(newItem.Category.Name))
+        {
+            return;
+        }
+        newItem.IsComplete = false;
+        newItem.Category = categories.FirstOrDefault(c => c.Name == newItem.Category.Name);
+        items.Add(newItem);
+        newItem = new Item();
+        newItem.Category = new Category();
+    }
+}

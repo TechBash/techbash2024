@@ -1,0 +1,10 @@
+{
+  "background_color": "#ffffff",
+  "description": "UnoShoppingList",
+  "display": "standalone",
+  "name": "UnoShoppingList",
+  "short_name": "UnoShoppingList",
+  "start_url": "/index.html",
+  "theme_color": "#ffffff",
+  "scope": "/"
+}

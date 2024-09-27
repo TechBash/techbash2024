@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "ShoppingListSample.WinUI (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "ShoppingListSample.WinUI (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

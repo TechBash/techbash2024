@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:local="clr-namespace:ShoppingListSample.Maui"
+             x:Class="ShoppingListSample.Maui.MainPage">
+
+    <ScrollView>
+        <VerticalStackLayout
+            Padding="30,0"
+            Spacing="25">
+            <Picker x:Name="categoryPicker" Title="Select a category" ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedCategory}"/>
+            <Entry x:Name="nameEntry" Placeholder="Enter an item name"/>
+            <Button
+                x:Name="AddBtn"
+                Text="Add item" 
+                SemanticProperties.Hint="Adds an item to the shopping list"
+                Clicked="addButton_Click"
+                HorizontalOptions="Fill" />
+            <ListView x:Name="shoppingList" ItemsSource="{Binding Items}" HorizontalOptions="StartAndExpand">
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <ViewCell>
+                            <StackLayout Orientation="Horizontal" HorizontalOptions="FillAndExpand">
+                                <Label Text="{Binding Name}" HorizontalOptions="StartAndExpand" VerticalOptions="Center" />
+                                <Label Text="{Binding Category}" HorizontalOptions="StartAndExpand" VerticalOptions="Center" />
+                                <CheckBox IsChecked="{Binding IsComplete}" HorizontalOptions="Start" VerticalOptions="Center" />
+                                <Button Text="Delete" Clicked="deleteButton_Click" CommandParameter="{Binding .}" HorizontalOptions="EndAndExpand" />
+                            </StackLayout>
+                        </ViewCell>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+        </VerticalStackLayout>
+    </ScrollView>
+
+</ContentPage>

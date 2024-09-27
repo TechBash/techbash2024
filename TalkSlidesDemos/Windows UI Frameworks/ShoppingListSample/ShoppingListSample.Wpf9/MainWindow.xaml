@@ -1,0 +1,50 @@
+﻿<Window x:Class="ShoppingListSample.Wpf9.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:ShoppingListSample.Wpf9"
+        mc:Ignorable="d"
+        Title="Shopping List | WPF" Height="450" Width="800"
+        Loaded="Window_Loaded">
+    <Window.Resources>
+        <CollectionViewSource x:Key="itemViewSource"/>
+    </Window.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <StackPanel Orientation="Horizontal">
+            <Label Content="Category:" HorizontalAlignment="Left" Margin="4"/>
+            <ComboBox x:Name="categoryComboBox" DisplayMemberPath="Name"  Width="200"
+                      Margin="4"/>
+            <Label Content="Name:" HorizontalAlignment="Left" Margin="4"/>
+            <TextBox x:Name="nameTextBox" Text="{Binding Name, Mode=TwoWay}" Margin="4" Width="300"/>
+            <Button Content="Add Item" HorizontalAlignment="Right" Margin="4" Click="addButton_Click"/>
+        </StackPanel>
+        <DataGrid Grid.Row="1" x:Name="itemsDataGrid" AutoGenerateColumns="False" 
+          EnableRowVirtualization="True" 
+          ItemsSource="{Binding Source={StaticResource itemViewSource}}" 
+          Margin="8" RowDetailsVisibilityMode="VisibleWhenSelected">
+            <DataGrid.Columns>
+                <DataGridTextColumn Binding="{Binding Category.Name}" 
+                            Header="Category" Width="SizeToHeader"
+                            IsReadOnly="True"/>
+                <DataGridTextColumn Binding="{Binding Name}" Header="Name" Width="*"/>
+                <DataGridCheckBoxColumn Binding="{Binding IsComplete}" Header="Purchased" 
+                            Width="SizeToHeader"/>
+                <DataGridTemplateColumn Width="100">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Button Click="deleteButton_Click">Delete</Button>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+        <Button Grid.Row="2" Content="Save" HorizontalAlignment="Center" Margin="4" 
+        Click="Button_Click" Width="123"/>
+    </Grid>
+</Window>
