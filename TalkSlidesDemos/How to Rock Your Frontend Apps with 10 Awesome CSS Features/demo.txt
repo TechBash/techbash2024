@@ -1,0 +1,11 @@
+Hiya!
+
+Thanks for the interest in my demo code :)
+You can find all my demos for talks on my GitHub page.
+
+For this specific talk the link is: https://github.com/mobilemancer/awesome-css/tree/conf/techbash-2024
+
+If you are having issues, just reach out on LinkedIn: linkedin.com/in/awanqvist/
+
+All the best in your future learning endeavours,
+Andreas
