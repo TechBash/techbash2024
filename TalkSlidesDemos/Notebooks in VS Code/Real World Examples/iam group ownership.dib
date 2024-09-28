@@ -1,0 +1,166 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"name":"csharp"},{"aliases":[],"languageName":"pwsh","name":"pwsh"}]}}
+
+#!pwsh
+
+$environments = @( 'prd' )
+#$environments = @( 'tst', 'uat', 'prd' )
+
+$applications = @(
+    '???'
+)
+
+$groupOwners = @{
+    'dev'=@{
+        'dev 1'='8ccfb0c2-ae36-4c1b-90a1-582a2508d199'
+        'dev 2'='8b25ee10-7823-4bec-bbe6-7b9e422fa44d'
+    }
+    'tst'=@{
+        'QA lead'='a8ee91d3-9c26-4bee-9981-66989d4e24d4'
+    }
+    'uat'=@{
+        'project manager'='a90378bf-1905-4dde-8d04-f85c7a945460'
+        'product owner'='a64875fa-9069-4e08-8816-b692a99700b8'
+    }
+    'prd'=@{
+        'project manager'='a90378bf-1905-4dde-8d04-f85c7a945460'
+        'product owner'='a64875fa-9069-4e08-8816-b692a99700b8'
+    }
+    'all'=@{
+        'admin 1'='ad21f390-231c-40b6-969d-115243732bee'
+        'admin 2'='c2ceccdf-a156-4fe8-8fef-456cb2bd07bf'
+    }
+}
+Write-Host "done ($(Get-Date))"
+
+#!pwsh
+
+# Check the group owners
+
+Write-Host 'Checking group owners'
+foreach ($application in $applications)
+{
+    foreach ($environment in $environments)
+    {
+        $name = "$application-app-$environment"
+        Write-Host "$application ($environment)"
+
+        $enterpriseApplicationName = $name.ToLower()
+        $id = az ad sp list --all --query "[?displayName == '$enterpriseApplicationName' && servicePrincipalType == 'Application'].id" -o tsv
+        $roles = az ad sp show --id $id --query appRoles[].[displayName,description] -o tsv
+        
+        if ($roles.Count -eq 0)
+        {
+            $groupName = "IAM-$application-$environment"  # ex: IAM-<app name>-tst
+            Write-Host "    group $groupName"
+
+            $owners = az ad group owner list -g $groupName --query [].[displayName,userPrincipalName] -o tsv
+            if ($owners.Length -eq 0)
+            {
+                Write-Host '        no owners found'
+            }
+            else
+            {
+                foreach ($owner in $owners)
+                {
+                    $bits2 = $owner.Split("`t")
+                    Write-Host "          $($bits2[0]) ($($bits2[1]))"
+                }
+            }
+        }
+        else
+        {
+            foreach ($role in $roles)
+            {
+                $bits = $role.Split("`t")
+                $rolename = $bits[0].Replace(' ', '')
+                $groupName = "IAM-$application-$environment-$rolename"  # ex: IAM-<app name>-tst-SuperUser
+                Write-Host "    group $groupName"
+
+                $owners = az ad group owner list -g $groupName --query [].[displayName,userPrincipalName] -o tsv
+                if ($owners.Length -eq 0)
+                {
+                    Write-Host '        no owners found'
+                }
+                else
+                {
+                    foreach ($owner in $owners)
+                    {
+                        $bits2 = $owner.Split("`t")
+                        Write-Host "          $($bits2[0]) ($($bits2[1]))"
+                    }
+                }
+            }
+        }
+    }
+}
+Write-Host "done ($(Get-Date))"
+
+#!pwsh
+
+# Add group owners
+
+Write-Host 'Adding group owners'
+foreach ($application in $applications)
+{
+    foreach ($environment in $environments)
+    {
+        $name = "$application-app-$environment"
+        Write-Host "$application ($environment)"
+
+        $enterpriseApplicationName = $name.ToLower()
+        $id = az ad sp list --all --query "[?displayName == '$enterpriseApplicationName' && servicePrincipalType == 'Application'].id" -o tsv
+        $roles = az ad sp show --id $id --query appRoles[].[displayName,description] -o tsv
+
+        if ($roles.Count -eq 0)
+        {
+            $groupName = "IAM-$application-$environment"  # ex: IAM-<app name>-tst
+            Write-Host "    group $groupName"
+
+            foreach ($user in $groupOwners['all'].GetEnumerator())
+            {
+                Write-Host "        add $($user.Name) ($($user.Value)) as owner of group '$groupName'"
+                #Write-Host "        az ad group owner add -g $groupName --owner-object-id $($user.Value)"
+                az ad group owner add -g $groupName --owner-object-id $user.Value
+            }
+            foreach ($user in $groupOwners[$environment].GetEnumerator())
+            {
+                Write-Host "        add $($user.Name) ($($user.Value)) as owner of group '$groupName'"
+                #Write-Host "        az ad group owner add -g $groupName --owner-object-id $($user.Value)"
+                az ad group owner add -g $groupName --owner-object-id $user.Value
+            }
+        }
+        else
+        {
+            foreach ($role in $roles)
+            {
+                $bits = $role.Split("`t")
+                $rolename = $bits[0].Replace(' ', '')
+                $groupName = "IAM-$application-$environment-$rolename"  # ex: IAM-<app name>-tst-SuperUser
+                Write-Host "    group $groupName"
+
+                foreach ($user in $groupOwners['all'].GetEnumerator())
+                {
+                    Write-Host "        add $($user.Name) ($($user.Value)) as owner of group '$groupName'"
+                    #Write-Host "        az ad group owner add -g $groupName --owner-object-id $($user.Value)"
+                    az ad group owner add -g $groupName --owner-object-id $user.Value
+                }
+                foreach ($user in $groupOwners[$environment].GetEnumerator())
+                {
+                    Write-Host "        add $($user.Name) ($($user.Value)) as owner of group '$groupName'"
+                    #Write-Host "        az ad group owner add -g $groupName --owner-object-id $($user.Value)"
+                    az ad group owner add -g $groupName --owner-object-id $user.Value
+                }
+            }
+        }
+    }
+}
+Write-Host "done ($(Get-Date))"
+
+#!pwsh
+
+#research
+
+#az ad group owner list -g IAM-<app name>-uat-admin
+$owners = az ad group owner list -g IAM-Logtracker-uat-admin --query [].[displayName,userPrincipalName] -o tsv
